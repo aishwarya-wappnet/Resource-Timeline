@@ -2,38 +2,16 @@ import React, { useState } from "react";
 import "./App.css";
 
 function App() {
-  const [droppedItems, setDroppedItems] = useState([]);
+  const [droppedItems, setDroppedItems] = useState(Array(84).fill(null));
   const [outsideItems, setOutsideItems] = useState([
     { name: "Item 1", width: 2, id: 1 },
     { name: "Item 2", width: 3, id: 2 },
     { name: "Item 3", width: 1, id: 3 },
     { name: "Item 4", width: 2, id: 4 },
-    { name: "Item 5", width: 1, id: 5 },
+    { name: "Item 5", width: 5, id: 5 },
   ]);
 
-  const handleDrop = (boxIndex, width, itemName, itemId) => {
-    console.log(boxIndex, width);
-    const endIndex = boxIndex + width;
-    console.log(endIndex);
-
-    if (endIndex <= 64) {
-      console.log("hi");
-      const isSpaceAvailable = !droppedItems
-        .slice(boxIndex, endIndex)
-        .some(Boolean);
-
-      if (isSpaceAvailable) {
-        const updatedDroppedItems = [...droppedItems];
-        for (let i = boxIndex; i < endIndex; i++) {
-          updatedDroppedItems[i] = { name: itemName, id: itemId, width: width };
-        }
-        setDroppedItems(updatedDroppedItems);
-        setOutsideItems(outsideItems.filter((item) => item.id !== itemId));
-      }
-    }
-  };
-
-  const handleDragOver = (e, i) => {
+  const handleDragOver = (e) => {
     e.preventDefault();
   };
 
@@ -52,73 +30,111 @@ function App() {
   const handleGridDrop = (e, index) => {
     e.preventDefault();
     const droppedItem = JSON.parse(e.dataTransfer.getData("item"));
-    console.log(droppedItem, droppedItems, index);
-    if (!droppedItem) return;
+    const droppedItemEndIndex = index + droppedItem.width;
+
+    if (droppedItemEndIndex > 84) {
+      return; // Ensure the item does not overflow the grid
+    }
+
+    const updatedDroppedItems = [...droppedItems];
+
+    // Clear old positions of the dropped item
+    for (let i = 0; i < updatedDroppedItems.length; i++) {
+      if (
+        updatedDroppedItems[i] &&
+        updatedDroppedItems[i].id === droppedItem.id
+      ) {
+        for (let j = 0; j < droppedItem.width; j++) {
+          updatedDroppedItems[i + j] = null;
+        }
+        break;
+      }
+    }
 
     const existingItem = droppedItems[index];
+    console.log(existingItem);
     if (existingItem) {
-      console.log("if");
-      // If there's already an item in the dropped position, move the dropped item to this position
-      const updatedDroppedItems = [...droppedItems];
+      const existingItemEndIndex = index + existingItem.width;
 
-      // Clear old positions of the dropped item
-      droppedItems.forEach((item, i) => {
-        if (item && item.id === droppedItem.id) {
-          for (let j = 0; j < item.width; j++) {
-            updatedDroppedItems[i + j] = null;
-          }
-        }
-      });
+      // Ensure the existing item can be moved to the old position of the dropped item
+      const oldIndex = droppedItems.findIndex(
+        (item) => item && item.id === droppedItem.id
+      );
+      const oldEndIndex = oldIndex + existingItem.width;
 
-      // Set the dropped item in its new position
-      for (let i = 0; i < droppedItem.width; i++) {
-        updatedDroppedItems[index + i] = droppedItem;
+      if (
+        oldEndIndex > 84 ||
+        droppedItems
+          .slice(oldIndex, oldEndIndex)
+          .some((item) => item && item.id !== droppedItem.id)
+      ) {
+        return;
       }
-      setDroppedItems(updatedDroppedItems);
-    } else {
-      // If the dropped position is empty, proceed with regular dropping logic
-      const updatedDroppedItems = [...droppedItems];
 
-      // Clear old positions of the dropped item
-      droppedItems.forEach((item, i) => {
-        if (item && item.id === droppedItem.id) {
-          for (let j = 0; j < item.width; j++) {
-            updatedDroppedItems[i + j] = null;
-          }
-        }
-      });
-
-      // Set the dropped item in its new position
-      for (let i = 0; i < droppedItem.width; i++) {
-        updatedDroppedItems[index + i] = droppedItem;
+      // Move the existing item to the old position of the dropped item
+      for (let i = 0; i < existingItem.width; i++) {
+        updatedDroppedItems[oldIndex + i] = existingItem;
       }
-      setDroppedItems(updatedDroppedItems);
+
+      // Clear the old position of the existing item
+      for (let i = index; i < existingItemEndIndex; i++) {
+        updatedDroppedItems[i] = null;
+      }
     }
+
+    // Set the dropped item in its new position
+    for (let i = 0; i < droppedItem.width; i++) {
+      updatedDroppedItems[index + i] = droppedItem;
+    }
+
+    setDroppedItems(updatedDroppedItems);
+    setOutsideItems(outsideItems.filter((item) => item.id !== droppedItem.id));
   };
 
+  const hours = [
+    "8 AM",
+    "9 AM",
+    "10 AM",
+    "11 AM",
+    "12 PM",
+    "1 PM",
+    "2 PM",
+    "3 PM",
+    "4 PM",
+    "5 PM",
+    "6 PM",
+    "7 PM",
+    "8 PM",
+  ];
+  const resources = ["John", "Jane", "Jim", "Jack", "Jill"];
+
   const gridItems = [];
-  for (let i = 0; i < 64; i++) {
+  for (let i = 0; i < 84; i++) {
+    const x = i % 14;
+    const y = Math.floor(i / 14);
     const item = droppedItems[i];
-    if (i % 8 === 0 && Math.floor(i / 8) === 0) gridItems.push("");
-    if (i % 8 === 0 && i !== 0) {
+
+    if (x === 0 && y === 0) {
+      gridItems.push(<div key={i} className="box label"></div>);
+    } else if (y === 0) {
       gridItems.push(
-        <div key={i} className="box">
-          John
+        <div key={i} className="box label">
+          {hours[x - 1]}
         </div>
       );
-    } else if (Math.floor(i / 8) === 0 && i !== 0)
+    } else if (x === 0) {
       gridItems.push(
-        <div key={i} className="box">
-          8 am
+        <div key={i} className="box label">
+          {resources[y - 1]}
         </div>
       );
-    else {
+    } else {
       gridItems.push(
         <div
           key={i}
           className={`box ${item ? "highlight" : ""}`}
           onDrop={(e) => handleGridDrop(e, i)}
-          onDragOver={(e) => handleDragOver(e, i)}
+          onDragOver={handleDragOver}
         >
           {item && (
             <div
@@ -126,7 +142,7 @@ function App() {
               draggable
               onDragStart={(e) => handleGridDragStart(e, item)}
             >
-              Item {item.id}
+              {item.name}
             </div>
           )}
         </div>
