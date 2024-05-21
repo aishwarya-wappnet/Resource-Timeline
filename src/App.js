@@ -133,7 +133,7 @@ function App() {
 
   for (let y = 0; y <= gridHeight; y++) {
     for (let x = 0; x <= gridWidth; x++) {
-      const index = y * gridWidth + x;
+      const index = y * (gridWidth + 1) + x;
 
       if (x === 0 && y === 0) {
         gridItems.push(<div key={index} className="box label"></div>);
@@ -155,14 +155,23 @@ function App() {
         const itemIndex = (y - 1) * gridWidth + (x - 1);
         const item = droppedItems[itemIndex];
 
-        gridItems.push(
-          <div
-            key={index}
-            className={`box ${item ? "highlight" : ""}`}
-            onDrop={(e) => handleGridDrop(e, itemIndex)}
-            onDragOver={handleDragOver}
-          >
-            {item && (
+        if (item) {
+          const span = item.width; // Width of the event
+          const spanClass = `span-${span}`;
+
+          gridItems.push(
+            <div
+              key={index}
+              className={`box highlight ${spanClass}`}
+              onDrop={(e) => handleGridDrop(e, itemIndex)}
+              onDragOver={handleDragOver}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gridColumn: `span ${span}`,
+              }}
+            >
               <div
                 className="dropped-item"
                 draggable
@@ -170,9 +179,21 @@ function App() {
               >
                 {item.name}
               </div>
-            )}
-          </div>
-        );
+            </div>
+          );
+
+          // Skip rendering cells covered by this event
+          x += span - 1;
+        } else {
+          gridItems.push(
+            <div
+              key={index}
+              className="box"
+              onDrop={(e) => handleGridDrop(e, itemIndex)}
+              onDragOver={handleDragOver}
+            ></div>
+          );
+        }
       }
     }
   }

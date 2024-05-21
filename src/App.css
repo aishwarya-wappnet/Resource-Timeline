@@ -41,6 +41,7 @@
 /* App.css */
 
 /* App.css */
+/* App.css */
 .grid {
   display: grid;
   gap: 1px;
@@ -76,9 +77,6 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .outside-item {
@@ -90,4 +88,5 @@
   cursor: grab;
   user-select: none;
   width: 20%;
+
 }
