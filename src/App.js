@@ -1,15 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 function App() {
-  const [droppedItems, setDroppedItems] = useState(Array(84).fill(null));
-  const [outsideItems, setOutsideItems] = useState([
-    { name: "Item 1", width: 2, id: 1 },
-    { name: "Item 2", width: 3, id: 2 },
-    { name: "Item 3", width: 1, id: 3 },
-    { name: "Item 4", width: 2, id: 4 },
-    { name: "Item 5", width: 5, id: 5 },
-  ]);
+  const [droppedItems, setDroppedItems] = useState([]);
+  const [outsideItems, setOutsideItems] = useState([]);
+  const [hours, setHours] = useState([]);
+  const [resources, setResources] = useState([]);
+
+  useEffect(() => {
+    // Simulate API call
+    const fetchGridData = async () => {
+      // Mock API response
+      const hoursData = [
+        "8 AM",
+        "9 AM",
+        "10 AM",
+        "11 AM",
+        "12 PM",
+        "1 PM",
+        "2 PM",
+        "3 PM",
+        "4 PM",
+        "5 PM",
+      ];
+      const resourcesData = ["John", "Jane", "Jim", "Jack", "Jill"];
+      const outsideItemsData = [
+        { name: "Item 1", width: 2, id: 1 },
+        { name: "Item 2", width: 3, id: 2 },
+        { name: "Item 3", width: 1, id: 3 },
+        { name: "Item 4", width: 2, id: 4 },
+        { name: "Item 5", width: 5, id: 5 },
+      ];
+
+      setHours(hoursData);
+      setResources(resourcesData);
+      setDroppedItems(
+        Array(hoursData.length * resourcesData.length).fill(null)
+      );
+      setOutsideItems(outsideItemsData);
+    };
+
+    fetchGridData();
+  }, []);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -30,9 +62,13 @@ function App() {
   const handleGridDrop = (e, index) => {
     e.preventDefault();
     const droppedItem = JSON.parse(e.dataTransfer.getData("item"));
+    const gridWidth = hours.length;
     const droppedItemEndIndex = index + droppedItem.width;
 
-    if (droppedItemEndIndex > 84) {
+    if (
+      droppedItemEndIndex > droppedItems.length ||
+      (index % gridWidth) + droppedItem.width > gridWidth
+    ) {
       return; // Ensure the item does not overflow the grid
     }
 
@@ -52,7 +88,6 @@ function App() {
     }
 
     const existingItem = droppedItems[index];
-    console.log(existingItem);
     if (existingItem) {
       const existingItemEndIndex = index + existingItem.width;
 
@@ -63,7 +98,8 @@ function App() {
       const oldEndIndex = oldIndex + existingItem.width;
 
       if (
-        oldEndIndex > 84 ||
+        oldEndIndex > droppedItems.length ||
+        (oldIndex % gridWidth) + existingItem.width > gridWidth ||
         droppedItems
           .slice(oldIndex, oldEndIndex)
           .some((item) => item && item.id !== droppedItem.id)
@@ -91,62 +127,53 @@ function App() {
     setOutsideItems(outsideItems.filter((item) => item.id !== droppedItem.id));
   };
 
-  const hours = [
-    "8 AM",
-    "9 AM",
-    "10 AM",
-    "11 AM",
-    "12 PM",
-    "1 PM",
-    "2 PM",
-    "3 PM",
-    "4 PM",
-    "5 PM",
-    "6 PM",
-    "7 PM",
-    "8 PM",
-  ];
-  const resources = ["John", "Jane", "Jim", "Jack", "Jill"];
-
   const gridItems = [];
-  for (let i = 0; i < 84; i++) {
-    const x = i % 14;
-    const y = Math.floor(i / 14);
-    const item = droppedItems[i];
+  const gridWidth = hours.length;
+  const gridHeight = resources.length;
 
-    if (x === 0 && y === 0) {
-      gridItems.push(<div key={i} className="box label"></div>);
-    } else if (y === 0) {
-      gridItems.push(
-        <div key={i} className="box label">
-          {hours[x - 1]}
-        </div>
-      );
-    } else if (x === 0) {
-      gridItems.push(
-        <div key={i} className="box label">
-          {resources[y - 1]}
-        </div>
-      );
-    } else {
-      gridItems.push(
-        <div
-          key={i}
-          className={`box ${item ? "highlight" : ""}`}
-          onDrop={(e) => handleGridDrop(e, i)}
-          onDragOver={handleDragOver}
-        >
-          {item && (
-            <div
-              className="dropped-item"
-              draggable
-              onDragStart={(e) => handleGridDragStart(e, item)}
-            >
-              {item.name}
+  for (let y = 0; y <= gridHeight; y++) {
+    for (let x = 0; x <= gridWidth; x++) {
+      const index = y * gridWidth + x;
+
+      if (x === 0 && y === 0) {
+        gridItems.push(<div key={index} className="box label"></div>);
+      } else if (y === 0) {
+        if (x <= gridWidth) {
+          gridItems.push(
+            <div key={index} className="box label">
+              {hours[x - 1]}
             </div>
-          )}
-        </div>
-      );
+          );
+        }
+      } else if (x === 0) {
+        gridItems.push(
+          <div key={index} className="box label">
+            {resources[y - 1]}
+          </div>
+        );
+      } else {
+        const itemIndex = (y - 1) * gridWidth + (x - 1);
+        const item = droppedItems[itemIndex];
+
+        gridItems.push(
+          <div
+            key={index}
+            className={`box ${item ? "highlight" : ""}`}
+            onDrop={(e) => handleGridDrop(e, itemIndex)}
+            onDragOver={handleDragOver}
+          >
+            {item && (
+              <div
+                className="dropped-item"
+                draggable
+                onDragStart={(e) => handleGridDragStart(e, item)}
+              >
+                {item.name}
+              </div>
+            )}
+          </div>
+        );
+      }
     }
   }
 
@@ -163,7 +190,15 @@ function App() {
 
   return (
     <div>
-      <div className="grid">{gridItems}</div>
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${hours?.length + 1}, 1fr)`,
+          gridTemplateRows: `repeat(${resources?.length + 1}, 1fr)`,
+        }}
+      >
+        {gridItems}
+      </div>
       <div className="outside-container">{outsideItemElements}</div>
     </div>
   );
