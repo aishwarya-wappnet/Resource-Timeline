@@ -12,16 +12,43 @@ function App() {
     const fetchGridData = async () => {
       // Mock API response
       const hoursData = [
-        "8 AM",
-        "9 AM",
-        "10 AM",
-        "11 AM",
-        "12 PM",
-        "1 PM",
-        "2 PM",
-        "3 PM",
-        "4 PM",
-        "5 PM",
+        "8:00",
+        "8:15",
+        "8:30",
+        "8:45",
+        "9:00",
+        "9:15",
+        "9:30",
+        "9:45",
+        "10:00",
+        "10:15",
+        "10:30",
+        "10:45",
+        "11:00",
+        "11:15",
+        "11:30",
+        "11:45",
+        "12:00",
+        "12:15",
+        "12:30",
+        "12:45",
+        "1:00",
+        "1:15",
+        "1:30",
+        "1:45",
+        "2:00",
+        "2:15",
+        "2:30",
+        "2:45",
+        "3:00",
+        "3:15",
+        "3:30",
+        "3:45",
+        "4:00",
+        "4:15",
+        "4:30",
+        "4:45",
+        "5:00",
       ];
       const resourcesData = ["John", "Jane", "Jim", "Jack", "Jill"];
       const outsideItemsData = [
@@ -63,7 +90,12 @@ function App() {
     e.preventDefault();
     const droppedItem = JSON.parse(e.dataTransfer.getData("item"));
     const gridWidth = hours.length;
-    const droppedItemEndIndex = index + droppedItem.width;
+    const startTime = hours[index % hours.length];
+    const endTime = calculateTime(startTime, droppedItem.width);
+    const endTimeIndex = hours.findIndex((ele) => ele === endTime);
+    const startTimeIndex = hours.findIndex((ele) => ele === startTime);
+    console.log(endTimeIndex - startTimeIndex + 1);
+    const droppedItemEndIndex = index + endTimeIndex - startTimeIndex;
 
     if (
       droppedItemEndIndex > droppedItems.length ||
@@ -119,7 +151,7 @@ function App() {
     }
 
     // Set the dropped item in its new position
-    for (let i = 0; i < droppedItem.width; i++) {
+    for (let i = 0; i < endTimeIndex - startTimeIndex; i++) {
       updatedDroppedItems[index + i] = droppedItem;
     }
 
@@ -157,7 +189,11 @@ function App() {
 
         if (item) {
           const span = item.width; // Width of the event
-          const spanClass = `span-${span}`;
+          const startTime = hours[index % hours.length];
+          const endTime = calculateTime(startTime, item.width);
+          const endTimeIndex = hours.findIndex((ele) => ele === endTime);
+          const startTimeIndex = hours.findIndex((ele) => ele === startTime);
+          const spanClass = `span-${endTimeIndex - startTimeIndex + 1}`;
 
           gridItems.push(
             <div
@@ -205,7 +241,7 @@ function App() {
       draggable
       onDragStart={(e) => handleOutsideDragStart(e, item)}
     >
-      {item.name}
+      {item.name}&nbsp;&nbsp;{item.width}
     </div>
   ));
 
@@ -226,3 +262,24 @@ function App() {
 }
 
 export default App;
+
+function calculateTime(start, hoursToAdd) {
+  // Get the time string at the given index
+
+  const [hours, minutes] = start.split(":").map(Number);
+
+  // Create a new Date object with the given hours and minutes
+  const time = new Date();
+  time.setHours(hours);
+  time.setMinutes(minutes);
+
+  // Add the hours to the time
+  time.setHours(time.getHours() + hoursToAdd);
+
+  // Format the resulting time into the desired format (hh:mm)
+  const formattedTime = `${String(time.getHours()).padStart(2, "0")}:${String(
+    time.getMinutes()
+  ).padStart(2, "0")}`;
+
+  return formattedTime;
+}
