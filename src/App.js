@@ -49,6 +49,9 @@ function App() {
         "4:30",
         "4:45",
         "5:00",
+        "5:15",
+        "5:30",
+        "5:45",
       ];
       const resourcesData = ["John", "Jane", "Jim", "Jack", "Jill"];
       const outsideItemsData = [
@@ -90,16 +93,14 @@ function App() {
     e.preventDefault();
     const droppedItem = JSON.parse(e.dataTransfer.getData("item"));
     const gridWidth = hours.length;
-    const startTime = hours[index % hours.length];
-    const endTime = calculateTime(startTime, droppedItem.width);
-    const endTimeIndex = hours.findIndex((ele) => ele === endTime);
+    const itemWidthInSlots = droppedItem.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+    const startTime = hours[index % gridWidth];
     const startTimeIndex = hours.findIndex((ele) => ele === startTime);
-    console.log(endTimeIndex - startTimeIndex + 1);
-    const droppedItemEndIndex = index + endTimeIndex - startTimeIndex;
+    const endTimeIndex = startTimeIndex + itemWidthInSlots;
 
     if (
-      droppedItemEndIndex > droppedItems.length ||
-      (index % gridWidth) + droppedItem.width > gridWidth
+      endTimeIndex > hours.length ||
+      (index % gridWidth) + itemWidthInSlots > gridWidth
     ) {
       return; // Ensure the item does not overflow the grid
     }
@@ -112,51 +113,59 @@ function App() {
         updatedDroppedItems[i] &&
         updatedDroppedItems[i].id === droppedItem.id
       ) {
-        for (let j = 0; j < droppedItem.width; j++) {
+        for (let j = 0; j < itemWidthInSlots; j++) {
           updatedDroppedItems[i + j] = null;
         }
         break;
       }
     }
 
-    const existingItem = droppedItems[index];
-    if (existingItem) {
-      const existingItemEndIndex = index + existingItem.width;
-
-      // Ensure the existing item can be moved to the old position of the dropped item
-      const oldIndex = droppedItems.findIndex(
-        (item) => item && item.id === droppedItem.id
-      );
-      const oldEndIndex = oldIndex + existingItem.width;
-
-      if (
-        oldEndIndex > droppedItems.length ||
-        (oldIndex % gridWidth) + existingItem.width > gridWidth ||
-        droppedItems
-          .slice(oldIndex, oldEndIndex)
-          .some((item) => item && item.id !== droppedItem.id)
-      ) {
-        return;
-      }
-
-      // Move the existing item to the old position of the dropped item
-      for (let i = 0; i < existingItem.width; i++) {
-        updatedDroppedItems[oldIndex + i] = existingItem;
-      }
-
-      // Clear the old position of the existing item
-      for (let i = index; i < existingItemEndIndex; i++) {
-        updatedDroppedItems[i] = null;
+    // Check for overlap in the new position
+    for (let i = 0; i < itemWidthInSlots; i++) {
+      if (updatedDroppedItems[index + i]) {
+        return; // If there's an overlap, do nothing
       }
     }
 
     // Set the dropped item in its new position
-    for (let i = 0; i < endTimeIndex - startTimeIndex; i++) {
+    for (let i = 0; i < itemWidthInSlots; i++) {
       updatedDroppedItems[index + i] = droppedItem;
     }
 
     setDroppedItems(updatedDroppedItems);
     setOutsideItems(outsideItems.filter((item) => item.id !== droppedItem.id));
+  };
+
+  const moveItemAhead = (index) => {
+    const gridWidth = hours.length;
+    const updatedDroppedItems = [...droppedItems];
+    const item = updatedDroppedItems[index];
+
+    if (item) {
+      const itemWidthInSlots = item.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+      const newIndex = index + 1; // Move one step ahead
+
+      if ((newIndex % gridWidth) + itemWidthInSlots <= gridWidth) {
+        // Clear old position
+        for (let i = 0; i < itemWidthInSlots; i++) {
+          updatedDroppedItems[index + i] = null;
+        }
+
+        // Check for overlap in the new position
+        for (let i = 0; i < itemWidthInSlots; i++) {
+          if (updatedDroppedItems[newIndex + i]) {
+            return; // If there's an overlap, do nothing
+          }
+        }
+
+        // Set the item in its new position
+        for (let i = 0; i < itemWidthInSlots; i++) {
+          updatedDroppedItems[newIndex + i] = item;
+        }
+
+        setDroppedItems(updatedDroppedItems);
+      }
+    }
   };
 
   const gridItems = [];
@@ -171,11 +180,25 @@ function App() {
         gridItems.push(<div key={index} className="box label"></div>);
       } else if (y === 0) {
         if (x <= gridWidth) {
-          gridItems.push(
-            <div key={index} className="box label">
-              {hours[x - 1]}
-            </div>
-          );
+          const hour = hours[x - 1];
+          const hourParts = hour.split(":");
+          const showHour = hourParts[1] === "00";
+          const spanColumns = showHour
+            ? hours.filter((h) => h.startsWith(hourParts[0] + ":")).length
+            : 0;
+
+          if (showHour) {
+            gridItems.push(
+              <div
+                key={index}
+                className="box label"
+                style={{ gridColumn: `span ${spanColumns}` }}
+              >
+                {hour}
+              </div>
+            );
+            x += spanColumns - 1; // Skip the spanned columns
+          }
         }
       } else if (x === 0) {
         gridItems.push(
@@ -188,38 +211,37 @@ function App() {
         const item = droppedItems[itemIndex];
 
         if (item) {
-          const span = item.width; // Width of the event
-          const startTime = hours[index % hours.length];
-          const endTime = calculateTime(startTime, item.width);
-          const endTimeIndex = hours.findIndex((ele) => ele === endTime);
-          const startTimeIndex = hours.findIndex((ele) => ele === startTime);
-          const spanClass = `span-${endTimeIndex - startTimeIndex + 1}`;
+          const span = item.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+          const endX = x + span - 1;
 
-          gridItems.push(
-            <div
-              key={index}
-              className={`box highlight ${spanClass}`}
-              onDrop={(e) => handleGridDrop(e, itemIndex)}
-              onDragOver={handleDragOver}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gridColumn: `span ${span}`,
-              }}
-            >
+          if (endX <= gridWidth) {
+            gridItems.push(
               <div
-                className="dropped-item"
-                draggable
-                onDragStart={(e) => handleGridDragStart(e, item)}
+                key={index}
+                className="box highlight"
+                onDrop={(e) => handleGridDrop(e, itemIndex)}
+                onDragOver={handleDragOver}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gridColumn: `span ${span}`,
+                }}
               >
-                {item.name}
+                <div
+                  className="dropped-item"
+                  draggable
+                  onDragStart={(e) => handleGridDragStart(e, item)}
+                  onDoubleClick={() => moveItemAhead(itemIndex)}
+                >
+                  {item.name}
+                </div>
               </div>
-            </div>
-          );
+            );
 
-          // Skip rendering cells covered by this event
-          x += span - 1;
+            // Skip rendering cells covered by this event
+            x += span - 1;
+          }
         } else {
           gridItems.push(
             <div
@@ -262,24 +284,3 @@ function App() {
 }
 
 export default App;
-
-function calculateTime(start, hoursToAdd) {
-  // Get the time string at the given index
-
-  const [hours, minutes] = start.split(":").map(Number);
-
-  // Create a new Date object with the given hours and minutes
-  const time = new Date();
-  time.setHours(hours);
-  time.setMinutes(minutes);
-
-  // Add the hours to the time
-  time.setHours(time.getHours() + hoursToAdd);
-
-  // Format the resulting time into the desired format (hh:mm)
-  const formattedTime = `${String(time.getHours()).padStart(2, "0")}:${String(
-    time.getMinutes()
-  ).padStart(2, "0")}`;
-
-  return formattedTime;
-}

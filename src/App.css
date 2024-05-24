@@ -90,3 +90,53 @@
   width: 20%;
 
 }
+
+.box {
+  border: 1px solid #ccc;
+  min-height: 40px;
+}
+
+.label {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.highlight {
+  background-color: #e0f7fa;
+}
+
+.dropped-item {
+  background-color: #4caf50;
+  color: white;
+  padding: 5px;
+  border-radius: 3px;
+  cursor: move;
+}
+
+.outside-item {
+  background-color: #ff9800;
+  color: white;
+  padding: 5px;
+  margin: 5px;
+  border-radius: 3px;
+  cursor: move;
+}
+
+.grid {
+  display: grid;
+  grid-gap: 1px;
+  margin-bottom: 20px;
+}
+
+.outside-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.current-time-line {
+  background-color: red;
+}
