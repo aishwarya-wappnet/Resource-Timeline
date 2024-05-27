@@ -6,60 +6,28 @@ function App() {
   const [outsideItems, setOutsideItems] = useState([]);
   const [hours, setHours] = useState([]);
   const [resources, setResources] = useState([]);
+  const [currentTimePosition, setCurrentTimePosition] = useState(null);
 
   useEffect(() => {
     // Simulate API call
     const fetchGridData = async () => {
       // Mock API response
-      const hoursData = [
-        "8:00",
-        "8:15",
-        "8:30",
-        "8:45",
-        "9:00",
-        "9:15",
-        "9:30",
-        "9:45",
-        "10:00",
-        "10:15",
-        "10:30",
-        "10:45",
-        "11:00",
-        "11:15",
-        "11:30",
-        "11:45",
-        "12:00",
-        "12:15",
-        "12:30",
-        "12:45",
-        "1:00",
-        "1:15",
-        "1:30",
-        "1:45",
-        "2:00",
-        "2:15",
-        "2:30",
-        "2:45",
-        "3:00",
-        "3:15",
-        "3:30",
-        "3:45",
-        "4:00",
-        "4:15",
-        "4:30",
-        "4:45",
-        "5:00",
-        "5:15",
-        "5:30",
-        "5:45",
-      ];
+      const hoursData = [];
+      for (let h = 8; h < 18; h++) {
+        for (let m = 0; m < 60; m += 5) {
+          const hour = h % 12 || 12;
+          const period = h >= 12 ? "PM" : "AM";
+          hoursData.push(`${hour}:${m < 10 ? "0" + m : m} ${period}`);
+        }
+      }
+
       const resourcesData = ["John", "Jane", "Jim", "Jack", "Jill"];
       const outsideItemsData = [
-        { name: "Item 1", width: 2, id: 1 },
-        { name: "Item 2", width: 3, id: 2 },
-        { name: "Item 3", width: 1, id: 3 },
-        { name: "Item 4", width: 2, id: 4 },
-        { name: "Item 5", width: 5, id: 5 },
+        { name: "Item 1", width: 24, id: 1 }, // Width in 5-minute intervals
+        { name: "Item 2", width: 36, id: 2 },
+        { name: "Item 3", width: 12, id: 3 },
+        { name: "Item 4", width: 24, id: 4 },
+        { name: "Item 5", width: 60, id: 5 },
       ];
 
       setHours(hoursData);
@@ -72,6 +40,29 @@ function App() {
 
     fetchGridData();
   }, []);
+
+  useEffect(() => {
+    const updateCurrentTimePosition = () => {
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const isPM = currentHours >= 12;
+      const displayHours = currentHours % 12 || 12;
+      const currentTimeString = `${displayHours}:${
+        currentMinutes < 10 ? "0" + currentMinutes : currentMinutes
+      } ${isPM ? "PM" : "AM"}`;
+      console.log(currentTimeString);
+      const index = hours.findIndex((hour) => hour === currentTimeString);
+      if (index !== -1) {
+        setCurrentTimePosition(index);
+      }
+    };
+
+    updateCurrentTimePosition();
+    const intervalId = setInterval(updateCurrentTimePosition, 60000); // Update every minute
+
+    return () => clearInterval(intervalId);
+  }, [hours]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -93,7 +84,7 @@ function App() {
     e.preventDefault();
     const droppedItem = JSON.parse(e.dataTransfer.getData("item"));
     const gridWidth = hours.length;
-    const itemWidthInSlots = droppedItem.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+    const itemWidthInSlots = droppedItem.width; // Width is already in 5-minute intervals
     const startTime = hours[index % gridWidth];
     const startTimeIndex = hours.findIndex((ele) => ele === startTime);
     const endTimeIndex = startTimeIndex + itemWidthInSlots;
@@ -104,6 +95,7 @@ function App() {
     ) {
       return; // Ensure the item does not overflow the grid
     }
+    const endTime = hours[endTimeIndex - 1];
 
     const updatedDroppedItems = [...droppedItems];
 
@@ -142,7 +134,7 @@ function App() {
     const item = updatedDroppedItems[index];
 
     if (item) {
-      const itemWidthInSlots = item.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+      const itemWidthInSlots = item.width; // Width is already in 5-minute intervals
       const newIndex = index + 1; // Move one step ahead
 
       if ((newIndex % gridWidth) + itemWidthInSlots <= gridWidth) {
@@ -182,7 +174,7 @@ function App() {
         if (x <= gridWidth) {
           const hour = hours[x - 1];
           const hourParts = hour.split(":");
-          const showHour = hourParts[1] === "00";
+          const showHour = hourParts[1].split(" ")[0] === "00";
           const spanColumns = showHour
             ? hours.filter((h) => h.startsWith(hourParts[0] + ":")).length
             : 0;
@@ -211,7 +203,7 @@ function App() {
         const item = droppedItems[itemIndex];
 
         if (item) {
-          const span = item.width * 4; // Each hour is divided into 4 slots (15 minutes each)
+          const span = item.width; // Width is already in 5-minute intervals
           const endX = x + span - 1;
 
           if (endX <= gridWidth) {
@@ -263,7 +255,7 @@ function App() {
       draggable
       onDragStart={(e) => handleOutsideDragStart(e, item)}
     >
-      {item.name}&nbsp;&nbsp;{item.width}
+      {item.name}&nbsp;&nbsp;{item.width / 12} hr
     </div>
   ));
 
@@ -274,9 +266,25 @@ function App() {
         style={{
           gridTemplateColumns: `repeat(${hours?.length + 1}, 1fr)`,
           gridTemplateRows: `repeat(${resources?.length + 1}, 1fr)`,
+          position: "relative", // Needed for the current time indicator positioning
         }}
       >
         {gridItems}
+        {currentTimePosition !== null && (
+          <div
+            className="current-time-indicator"
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `calc(${
+                (currentTimePosition / hours.length) * 100
+              }% + 1fr)`,
+              width: "2px",
+              backgroundColor: "red",
+            }}
+          ></div>
+        )}
       </div>
       <div className="outside-container">{outsideItemElements}</div>
     </div>
